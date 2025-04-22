@@ -1,0 +1,155 @@
+class NodoArbolB:
+    def __init__(self, hoja=True):
+        self.hoja = hoja
+        self.claves = []
+        self.hijos = []
+
+class ArbolB:
+    def __init__(self, t=2):
+        """Inicializa un Árbol B con grado mínimo t
+        Para un Árbol B de 3 claves, t=2 (lo que significa que cada nodo puede tener 2t-1 = 3 claves)"""
+        self.raiz = NodoArbolB()
+        self.t = t  # Grado mínimo
+        self.max_claves = 2 * t - 1  # Máximo de claves en un nodo
+        self.explicacion = ""  # Para almacenar la explicación de la operación
+        
+    def buscar(self, k, nodo=None):
+        if nodo is None:
+            nodo = self.raiz
+            
+        i = 0
+        while i < len(nodo.claves) and k > nodo.claves[i]:
+            i += 1
+            
+        if i < len(nodo.claves) and k == nodo.claves[i]:
+            return (nodo, i)
+        
+        if nodo.hoja:
+            return None
+        
+        return self.buscar(k, nodo.hijos[i])
+    
+    def dividir_hijo(self, padre, indice):
+        """Divide el hijo en el índice dado del nodo padre"""
+        t = self.t
+        hijo = padre.hijos[indice]
+        nuevo_nodo = NodoArbolB(hoja=hijo.hoja)
+        
+        # Mover la clave media al padre
+        clave_media = hijo.claves[t-1]
+        padre.claves.insert(indice, clave_media)
+        
+        # Mover la mitad derecha de las claves del hijo al nuevo nodo
+        nuevo_nodo.claves = hijo.claves[t:]
+        hijo.claves = hijo.claves[:t-1]
+        
+        # Si el hijo no es una hoja, mover los hijos correspondientes
+        if not hijo.hoja:
+            nuevo_nodo.hijos = hijo.hijos[t:]
+            hijo.hijos = hijo.hijos[:t]
+        
+        # Insertar el nuevo nodo como hijo del padre
+        padre.hijos.insert(indice + 1, nuevo_nodo)
+        
+        self.explicacion += f"- Se dividió un nodo: la clave {clave_media} ascendió al padre.\n"
+        self.explicacion += f"- El nodo hijo original mantiene las claves menores a {clave_media}.\n"
+        self.explicacion += f"- Un nuevo nodo hijo almacena las claves mayores a {clave_media}.\n"
+    
+    def insertar(self, k):
+        """Insertar clave k en el Árbol B"""
+        self.explicacion = f"Insertando {k}:\n"
+        raiz = self.raiz
+        
+        # Si la raíz está llena, el árbol crece en altura
+        if len(raiz.claves) == self.max_claves:
+            self.explicacion += f"- Nodo raíz lleno {raiz.claves}, necesita división.\n"
+            nueva_raiz = NodoArbolB(hoja=False)
+            nueva_raiz.hijos.append(raiz)
+            self.raiz = nueva_raiz
+            self.dividir_hijo(nueva_raiz, 0)
+            self._insertar_no_lleno(nueva_raiz, k)
+            self.explicacion += "- El árbol incrementó su altura tras la división de la raíz.\n"
+        else:
+            self._insertar_no_lleno(raiz, k)
+            
+        return self.explicacion
+    
+    def _insertar_no_lleno(self, nodo, k):
+        """Insertar clave k en nodo no lleno"""
+        i = len(nodo.claves) - 1
+        
+        if nodo.hoja:
+            # Encontrar la posición correcta e insertar la clave
+            while i >= 0 and k < nodo.claves[i]:
+                i -= 1
+            nodo.claves.insert(i + 1, k)
+            self.explicacion += f"- Insertado {k} en nodo hoja en la posición {i+1}.\n"
+        else:
+            # Encontrar el hijo que tendrá la nueva clave
+            while i >= 0 and k < nodo.claves[i]:
+                i -= 1
+            i += 1
+            
+            # Si el hijo está lleno, dividirlo
+            if len(nodo.hijos[i].claves) == self.max_claves:
+                self.explicacion += f"- Nodo hijo {nodo.hijos[i].claves} lleno, requiere división antes de insertar {k}.\n"
+                self.dividir_hijo(nodo, i)
+                # Determinar qué hijo tendrá ahora la clave
+                if k > nodo.claves[i]:
+                    i += 1
+                    self.explicacion += f"- Después de la división, {k} se insertará en el hijo derecho.\n"
+                else:
+                    self.explicacion += f"- Después de la división, {k} se insertará en el hijo izquierdo.\n"
+            else:
+                self.explicacion += f"- Navegando al hijo apropiado {nodo.hijos[i].claves} para insertar {k}.\n"
+            
+            self._insertar_no_lleno(nodo.hijos[i], k)
+    
+    def imprimir_arbol(self):
+        """Imprimir el Árbol B nivel por nivel"""
+        if not self.raiz:
+            return "Árbol vacío"
+            
+        resultado = ""
+        cola = [(self.raiz, 0)]
+        nivel_actual = 0
+        cadena_nivel = ""
+        
+        while cola:
+            nodo, nivel = cola.pop(0)
+            
+            if nivel > nivel_actual:
+                resultado += f"Nivel {nivel_actual}: {cadena_nivel}\n"
+                cadena_nivel = ""
+                nivel_actual = nivel
+            
+            cadena_nivel += str(nodo.claves) + " "
+            
+            if not nodo.hoja:
+                for hijo in nodo.hijos:
+                    cola.append((hijo, nivel + 1))
+        
+        resultado += f"Nivel {nivel_actual}: {cadena_nivel}\n"
+        return resultado
+
+# Crear un árbol B con t=2 (3 claves por nodo)
+arbol_b = ArbolB(t=2)
+
+# Lista de claves a insertar
+claves = [78, 393, 12, 90, 120, 1, 10, 99, 34, 54, 121, 14, 60, 35]
+
+print("=== SIMULACIÓN DE CONSTRUCCIÓN DE ÁRBOL B DE 3 CLAVES ===\n")
+for clave in claves:
+    # Insertar la clave y obtener explicación
+    explicacion = arbol_b.insertar(clave)
+    
+    # Imprimir explicación
+    print(explicacion)
+    
+    # Imprimir estructura actual
+    print("Estado actual del árbol:")
+    print(arbol_b.imprimir_arbol())
+    print("-" * 70)
+
+print("\nEstructura final del Árbol B:")
+print(arbol_b.imprimir_arbol())
